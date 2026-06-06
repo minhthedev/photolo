@@ -1,0 +1,28 @@
+# Deploy lên Render.com — không cần VPS
+# 1. Push repo lên GitHub
+# 2. Render → New → Blueprint → chọn repo
+# 3. Thêm env vars (DATABASE_URL, GOOGLE_API_KEY, ADMIN_*, JWT_SECRET)
+# 4. Settings → Custom Domain → photolo.thedeptrai.io.vn
+# 5. DNS: CNAME photolo → [hostname Render cung cấp]
+
+services:
+  - type: web
+    name: photolo
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: DATABASE_URL
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: ADMIN_USERNAME
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true

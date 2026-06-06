@@ -1,0 +1,10 @@
+services:
+  photolo:
+    build: .
+    ports:
+      - "${PORT:-5000}:5000"
+    env_file:
+      - server/.env
+    environment:
+      NODE_ENV: production
+    restart: unless-stopped
