@@ -1,4 +1,5 @@
 const imageService = require('../services/imageService');
+const albumService = require('../services/albumService');
 
 exports.addImage = async (req, res) => {
   try {
@@ -7,6 +8,11 @@ exports.addImage = async (req, res) => {
 
     if (!resolvedAlbumId || !url?.trim()) {
       return res.status(400).json({ message: 'album_id and url are required' });
+    }
+
+    const allowed = await albumService.canManageAlbum(resolvedAlbumId, req.user);
+    if (!allowed) {
+      return res.status(403).json({ message: 'Bạn không có quyền với album này' });
     }
 
     const image = await imageService.addImage({

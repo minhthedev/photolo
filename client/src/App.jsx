@@ -3,16 +3,21 @@ import Home from './pages/Home';
 import Album from './pages/Album';
 import Admin from './pages/Admin';
 import Login from './pages/Login';
+import Register from './pages/Register';
+import Users from './pages/Users';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
 
 function AppShell({ children }) {
   const { pathname } = useLocation();
-  const { isAuthenticated, logout, user } = useAuth();
+  const { isAuthenticated, logout, user, isAdmin } = useAuth();
   const isGallery = pathname.startsWith('/album/');
-  const isLogin = pathname === '/login';
+  const isAuthPage = pathname === '/login' || pathname === '/register';
 
-  if (isGallery || isLogin) {
+  const roleLabel =
+    user?.role === 'admin' ? 'Admin' : user?.role === 'photographer' ? 'Thợ ảnh' : '';
+
+  if (isGallery || isAuthPage) {
     return <div className="min-h-screen bg-surface">{children}</div>;
   }
 
@@ -33,21 +38,34 @@ function AppShell({ children }) {
 
           {isAuthenticated ? (
             <nav className="flex items-center gap-2 sm:gap-3">
-              <span className="hidden text-xs text-white/40 sm:inline">{user?.username}</span>
+              <span className="hidden text-xs text-white/40 sm:inline">
+                {user?.displayName || user?.username}
+                {roleLabel ? ` · ${roleLabel}` : ''}
+              </span>
               <Link to="/" className="btn-secondary !px-4 !py-2 text-xs sm:text-sm">
                 Albums
               </Link>
               <Link to="/admin" className="btn-primary !px-4 !py-2 text-xs sm:text-sm">
                 Quản lý
               </Link>
+              {isAdmin && (
+                <Link to="/users" className="btn-secondary !px-4 !py-2 text-xs sm:text-sm">
+                  Thợ ảnh
+                </Link>
+              )}
               <button type="button" onClick={logout} className="btn-secondary !px-4 !py-2 text-xs sm:text-sm">
                 Đăng xuất
               </button>
             </nav>
           ) : (
-            <Link to="/login" className="btn-primary !px-4 !py-2 text-xs sm:text-sm">
-              Đăng nhập
-            </Link>
+            <nav className="flex items-center gap-2">
+              <Link to="/login" className="btn-secondary !px-4 !py-2 text-xs sm:text-sm">
+                Đăng nhập
+              </Link>
+              <Link to="/register" className="btn-primary !px-4 !py-2 text-xs sm:text-sm">
+                Đăng ký
+              </Link>
+            </nav>
           )}
         </div>
       </header>
@@ -62,6 +80,7 @@ function App() {
     <AppShell>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
         <Route
           path="/"
           element={
@@ -76,6 +95,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Admin />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/users"
+          element={
+            <ProtectedRoute roles={['admin']}>
+              <Users />
             </ProtectedRoute>
           }
         />

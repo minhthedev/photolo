@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 
-function AlbumCard({ album }) {
+function AlbumCard({ album, showOwner = false }) {
   const date = new Date(album.createdAt).toLocaleDateString('vi-VN', {
     day: '2-digit',
     month: 'short',
@@ -34,6 +34,9 @@ function AlbumCard({ album }) {
         </h3>
         {album.description && (
           <p className="mb-3 line-clamp-2 text-sm text-white/50">{album.description}</p>
+        )}
+        {showOwner && album.ownerName && (
+          <p className="mb-2 text-xs text-accent/80">Thợ ảnh: {album.ownerName}</p>
         )}
         <div className="flex items-center justify-between text-xs text-white/40">
           <span>{date}</span>

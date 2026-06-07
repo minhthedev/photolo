@@ -7,8 +7,7 @@ import { getAlbum, getImages, toggleImageSelection, updateImageNote } from '../a
 
 function Album() {
   const { id } = useParams();
-  const { isAuthenticated } = useAuth();
-  const isAdminView = isAuthenticated;
+  const { user, isAuthenticated } = useAuth();
 
   const [album, setAlbum] = useState(null);
   const [images, setImages] = useState([]);
@@ -20,12 +19,17 @@ function Album() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
-  const [showFileNames, setShowFileNames] = useState(isAdminView);
+  const [showFileNames, setShowFileNames] = useState(false);
   const [showSelectedList, setShowSelectedList] = useState(false);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [favoriteImages, setFavoriteImages] = useState([]);
   const [loadingFavorites, setLoadingFavorites] = useState(false);
   const [noteModalImage, setNoteModalImage] = useState(null);
+
+  const canManageAlbum =
+    isAuthenticated &&
+    album &&
+    (user?.role === 'admin' || album.ownerId === user?.id);
 
   const fetchImages = useCallback(
     async (pageNum, append = false) => {
@@ -275,7 +279,7 @@ function Album() {
               {selectedCount} đã chọn
             </div>
 
-            {isAdminView && (
+            {canManageAlbum && (
               <>
                 <button
                   type="button"
@@ -303,7 +307,7 @@ function Album() {
             <button type="button" onClick={handleCopyLink} className="btn-secondary !px-3 !py-2 text-xs sm:text-sm">
               {copied ? '✓ Copied' : 'Chia sẻ'}
             </button>
-            {isAdminView && selectedCount > 0 && (
+            {canManageAlbum && selectedCount > 0 && (
               <button
                 type="button"
                 onClick={handleDownloadSelected}
@@ -316,7 +320,7 @@ function Album() {
         </div>
       </div>
 
-      {isAdminView && showSelectedList && selectedCount > 0 && (
+      {canManageAlbum && showSelectedList && selectedCount > 0 && (
         <div className="border-b border-white/5 bg-surface-card">
           <div className="mx-auto max-w-[1600px] px-4 py-4 sm:px-6">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">

@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import AlbumCard from '../components/AlbumCard';
+import { useAuth } from '../context/AuthContext';
 import { getAlbums } from '../api';
 
 function Home() {
+  const { isAdmin, user } = useAuth();
   const [albums, setAlbums] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -49,13 +51,17 @@ function Home() {
     <div className="animate-fade-in">
       <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Album của bạn</h1>
+          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+            {isAdmin ? 'Tất cả album' : 'Album của tôi'}
+          </h1>
           <p className="mt-2 text-white/50">
-            Quản lý album và chia sẻ link cho khách chọn ảnh yêu thích
+            {isAdmin
+              ? 'Quản lý album của toàn bộ thợ ảnh'
+              : `Xin chào ${user?.displayName || user?.username} — quản lý album và chia sẻ link cho khách`}
           </p>
         </div>
         <Link to="/admin" className="btn-primary shrink-0">
-          + Tạo Album mới
+          + Tạo album mới
         </Link>
       </div>
 
@@ -73,7 +79,7 @@ function Home() {
           </div>
           <h2 className="mb-2 text-xl font-semibold">Chưa có album nào</h2>
           <p className="mb-6 max-w-sm text-white/50">
-            Tạo album đầu tiên và thêm ảnh từ URL hoặc lưu link Google Drive
+            Tạo album đầu tiên và thêm ảnh từ Google Drive hoặc URL
           </p>
           <Link to="/admin" className="btn-accent">
             Bắt đầu ngay
@@ -82,7 +88,7 @@ function Home() {
       ) : (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {albums.map((album) => (
-            <AlbumCard key={album.id} album={album} />
+            <AlbumCard key={album.id} album={album} showOwner={isAdmin} />
           ))}
         </div>
       )}

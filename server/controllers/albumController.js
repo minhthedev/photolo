@@ -13,6 +13,7 @@ exports.createAlbum = async (req, res) => {
       title,
       description,
       driveLink: drive_link || driveLink,
+      ownerId: req.user.userId,
     });
 
     let syncResult = null;
@@ -34,7 +35,10 @@ exports.createAlbum = async (req, res) => {
 
 exports.getAlbums = async (req, res) => {
   try {
-    const albums = await albumService.getAlbums();
+    const albums = await albumService.getAlbums({
+      userId: req.user.userId,
+      role: req.user.role,
+    });
     res.json(albums);
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch albums', error: error.message });
@@ -57,8 +61,61 @@ exports.getAlbumById = async (req, res) => {
   }
 };
 
+exports.updateAlbum = async (req, res) => {
+  try {
+    const allowed = await albumService.canManageAlbum(req.params.id, req.user);
+    if (!allowed) {
+      return res.status(403).json({ message: 'Bạn không có quyền với album này' });
+    }
+
+    const { title, description, drive_link, driveLink } = req.body;
+
+    if (!title?.trim()) {
+      return res.status(400).json({ message: 'Tên album không được để trống' });
+    }
+
+    const album = await albumService.updateAlbum(req.params.id, {
+      title,
+      description,
+      driveLink: drive_link ?? driveLink,
+    });
+
+    if (!album) {
+      return res.status(404).json({ message: 'Album not found' });
+    }
+
+    res.json(album);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to update album', error: error.message });
+  }
+};
+
+exports.deleteAlbum = async (req, res) => {
+  try {
+    const allowed = await albumService.canManageAlbum(req.params.id, req.user);
+    if (!allowed) {
+      return res.status(403).json({ message: 'Bạn không có quyền với album này' });
+    }
+
+    const deleted = await albumService.deleteAlbum(req.params.id);
+
+    if (!deleted) {
+      return res.status(404).json({ message: 'Album not found' });
+    }
+
+    res.json({ message: 'Album đã xóa' });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to delete album', error: error.message });
+  }
+};
+
 exports.syncDrive = async (req, res) => {
   try {
+    const allowed = await albumService.canManageAlbum(req.params.id, req.user);
+    if (!allowed) {
+      return res.status(403).json({ message: 'Bạn không có quyền với album này' });
+    }
+
     const result = await imageService.syncFromDrive(req.params.id);
 
     if (result.error === 'NOT_FOUND') {

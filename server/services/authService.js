@@ -1,22 +1,41 @@
 const crypto = require('crypto');
+const userService = require('./userService');
 
 const getSecret = () => process.env.JWT_SECRET || 'photo-selection-dev-secret';
 
-const toBase64Url = (value) =>
-  Buffer.from(value).toString('base64url');
+const toBase64Url = (value) => Buffer.from(value).toString('base64url');
 
-const fromBase64Url = (value) =>
-  Buffer.from(value, 'base64url').toString('utf8');
+const fromBase64Url = (value) => Buffer.from(value, 'base64url').toString('utf8');
 
-exports.login = ({ username, password }) => {
-  const adminUser = process.env.ADMIN_USERNAME || 'admin';
-  const adminPass = process.env.ADMIN_PASSWORD || 'admin123';
+exports.login = async ({ username, password }) => {
+  const user = await userService.authenticate(username.trim().toLowerCase(), password);
+  if (!user) return null;
 
-  if (username !== adminUser || password !== adminPass) {
-    return null;
-  }
+  return {
+    token: exports.createToken({
+      userId: user.id,
+      username: user.username,
+      role: user.role,
+    }),
+    user,
+  };
+};
 
-  return exports.createToken({ username: adminUser, role: 'admin' });
+exports.register = async ({ username, password, displayName }) => {
+  const user = await userService.createPhotographer({
+    username,
+    password,
+    displayName,
+  });
+
+  return {
+    token: exports.createToken({
+      userId: user.id,
+      username: user.username,
+      role: user.role,
+    }),
+    user,
+  };
 };
 
 exports.createToken = (payload) => {

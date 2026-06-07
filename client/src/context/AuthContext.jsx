@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { getMe, login as loginApi } from '../api';
+import { getMe, login as loginApi, register as registerApi } from '../api';
 
 const AuthContext = createContext(null);
 
@@ -40,6 +40,14 @@ export function AuthProvider({ children }) {
     return data;
   };
 
+  const register = async (payload) => {
+    const { data } = await registerApi(payload);
+    localStorage.setItem(TOKEN_KEY, data.token);
+    setToken(data.token);
+    setUser(data.user);
+    return data;
+  };
+
   const logout = () => {
     localStorage.removeItem(TOKEN_KEY);
     setToken(null);
@@ -52,7 +60,10 @@ export function AuthProvider({ children }) {
       user,
       loading,
       isAuthenticated: Boolean(user && token),
+      isAdmin: user?.role === 'admin',
+      isPhotographer: user?.role === 'photographer',
       login,
+      register,
       logout,
     }),
     [token, user, loading]

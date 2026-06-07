@@ -16,10 +16,15 @@ api.interceptors.request.use((config) => {
 });
 
 export const login = (username, password) => api.post('/auth/login', { username, password });
+export const register = (data) => api.post('/auth/register', data);
 export const getMe = () => api.get('/auth/me');
+export const getPhotographers = () => api.get('/auth/photographers');
+export const createPhotographer = (data) => api.post('/auth/photographers', data);
 export const getAlbums = () => api.get('/albums');
 export const getAlbum = (id) => api.get(`/albums/${id}`);
 export const createAlbum = (data) => api.post('/albums', data);
+export const updateAlbum = (id, data) => api.patch(`/albums/${id}`, data);
+export const deleteAlbum = (id) => api.delete(`/albums/${id}`);
 export const syncDriveImages = (albumId) => api.post(`/albums/${albumId}/sync-drive`);
 export const getImages = (albumId, page = 1, limit = 24) =>
   api.get(`/images/${albumId}`, { params: { page, limit } });

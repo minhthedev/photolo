@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ImageGrid from '../components/ImageGrid';
-import { addImage, createAlbum, getAlbum, getAlbums, syncDriveImages } from '../api';
+import { useAuth } from '../context/AuthContext';
+import { addImage, createAlbum, deleteAlbum, getAlbum, getAlbums, syncDriveImages, updateAlbum } from '../api';
 
 function Admin() {
   const navigate = useNavigate();
+  const { isAdmin } = useAuth();
   const [albums, setAlbums] = useState([]);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -19,6 +21,9 @@ function Admin() {
   const [activeTab, setActiveTab] = useState('create');
   const [syncMessage, setSyncMessage] = useState('');
   const [showFileNames, setShowFileNames] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editDriveLink, setEditDriveLink] = useState('');
 
   const refreshAlbums = async () => {
     const { data } = await getAlbums();
@@ -57,6 +62,15 @@ function Admin() {
   }, []);
 
   const selectedAlbum = albums.find((a) => a.id === selectedAlbumId);
+
+  useEffect(() => {
+    const album = albums.find((a) => a.id === selectedAlbumId);
+    if (album) {
+      setEditTitle(album.title);
+      setEditDescription(album.description || '');
+      setEditDriveLink(album.driveLink || '');
+    }
+  }, [selectedAlbumId, albums]);
 
   const showSyncResult = (syncResult) => {
     if (!syncResult) return;
@@ -195,6 +209,56 @@ function Admin() {
     }
   };
 
+  const handleUpdateAlbum = async (e) => {
+    e.preventDefault();
+    if (!selectedAlbumId || !editTitle.trim()) return;
+
+    setSubmitting(true);
+    setSyncMessage('');
+    try {
+      await updateAlbum(selectedAlbumId, {
+        title: editTitle.trim(),
+        description: editDescription.trim(),
+        drive_link: editDriveLink.trim() || null,
+      });
+      await refreshAlbums();
+      setSyncMessage('Đã cập nhật album.');
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Không thể cập nhật album.';
+      setSyncMessage(`Lỗi: ${msg}`);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteAlbum = async () => {
+    if (!selectedAlbumId) return;
+
+    const name = selectedAlbum?.title || 'album này';
+    if (!window.confirm(`Xóa "${name}"? Toàn bộ ảnh trong album cũng bị xóa.`)) {
+      return;
+    }
+
+    setSubmitting(true);
+    setSyncMessage('');
+    try {
+      await deleteAlbum(selectedAlbumId);
+      const data = await refreshAlbums();
+      const nextId = data[0]?.id || '';
+      setSelectedAlbumId(nextId);
+      await refreshImages(nextId);
+      setSyncMessage('Đã xóa album.');
+      if (!nextId) {
+        setActiveTab('create');
+      }
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Không thể xóa album.';
+      setSyncMessage(`Lỗi: ${msg}`);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
@@ -209,9 +273,13 @@ function Admin() {
   return (
     <div className="animate-fade-in">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">Quản lý Album</h1>
+        <h1 className="text-3xl font-bold tracking-tight">
+          {isAdmin ? 'Quản lý album (Admin)' : 'Quản lý album'}
+        </h1>
         <p className="mt-2 text-white/50">
-          Tạo album, thêm ảnh từ URL và chia sẻ link cho khách hàng
+          {isAdmin
+            ? 'Tạo album và quản lý ảnh cho mọi thợ ảnh'
+            : 'Tạo album riêng, thêm ảnh và chia sẻ link cho khách hàng'}
         </p>
       </div>
 
@@ -233,6 +301,15 @@ function Admin() {
           }`}
         >
           Quản lý ảnh
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('edit')}
+          className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition ${
+            activeTab === 'edit' ? 'bg-white text-black' : 'text-white/60 hover:text-white'
+          }`}
+        >
+          Sửa / Xóa
         </button>
       </div>
 
@@ -290,6 +367,95 @@ function Admin() {
         </section>
       )}
 
+      {activeTab === 'edit' && (
+        <section className="rounded-2xl border border-white/10 bg-surface-card p-6 sm:p-8">
+          {albums.length === 0 ? (
+            <p className="text-center text-white/50">Chưa có album nào để sửa.</p>
+          ) : (
+            <>
+              <h2 className="mb-6 text-xl font-semibold">Sửa hoặc xóa album</h2>
+
+              <div className="mb-6">
+                <label className="mb-2 block text-sm font-medium text-white/70">Chọn album</label>
+                <select
+                  value={selectedAlbumId}
+                  onChange={handleAlbumChange}
+                  className="input-field"
+                >
+                  {albums.map((album) => (
+                    <option key={album.id} value={album.id}>
+                      {isAdmin && album.ownerName ? `[${album.ownerName}] ` : ''}
+                      {album.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {syncMessage && (
+                <div
+                  className={`mb-4 rounded-xl px-4 py-3 text-sm ${
+                    syncMessage.startsWith('Lỗi')
+                      ? 'bg-red-500/10 text-red-400'
+                      : 'bg-green-500/10 text-green-400'
+                  }`}
+                >
+                  {syncMessage}
+                </div>
+              )}
+
+              <form onSubmit={handleUpdateAlbum} className="space-y-4">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-white/70">Tên album *</label>
+                  <input
+                    type="text"
+                    className="input-field"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-white/70">Mô tả</label>
+                  <textarea
+                    className="input-field min-h-[80px] resize-none"
+                    value={editDescription}
+                    onChange={(e) => setEditDescription(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-white/70">
+                    Google Drive folder link
+                  </label>
+                  <input
+                    type="url"
+                    className="input-field"
+                    placeholder="https://drive.google.com/drive/folders/..."
+                    value={editDriveLink}
+                    onChange={(e) => setEditDriveLink(e.target.value)}
+                  />
+                </div>
+
+                <div className="flex flex-wrap gap-3 pt-2">
+                  <button type="submit" className="btn-accent" disabled={submitting}>
+                    {submitting ? 'Đang lưu...' : 'Lưu thay đổi'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeleteAlbum}
+                    className="rounded-xl border border-red-500/30 bg-red-500/10 px-5 py-2.5 text-sm font-semibold text-red-400 transition hover:bg-red-500/20"
+                    disabled={submitting}
+                  >
+                    Xóa album
+                  </button>
+                </div>
+              </form>
+            </>
+          )}
+        </section>
+      )}
+
       {activeTab === 'manage' && (
         <div className="space-y-6">
           {albums.length === 0 ? (
@@ -311,6 +477,7 @@ function Admin() {
                     >
                       {albums.map((album) => (
                         <option key={album.id} value={album.id}>
+                          {isAdmin && album.ownerName ? `[${album.ownerName}] ` : ''}
                           {album.title}
                         </option>
                       ))}
