@@ -32,19 +32,21 @@ export function AuthProvider({ children }) {
     init();
   }, [token]);
 
-  const login = async (username, password) => {
-    const { data } = await loginApi(username, password);
+  const completeAuth = (data) => {
     localStorage.setItem(TOKEN_KEY, data.token);
     setToken(data.token);
     setUser(data.user);
+  };
+
+  const login = async (username, password) => {
+    const { data } = await loginApi(username, password);
+    completeAuth(data);
     return data;
   };
 
   const register = async (payload) => {
     const { data } = await registerApi(payload);
-    localStorage.setItem(TOKEN_KEY, data.token);
-    setToken(data.token);
-    setUser(data.user);
+    completeAuth(data);
     return data;
   };
 
@@ -64,6 +66,7 @@ export function AuthProvider({ children }) {
       isPhotographer: user?.role === 'photographer',
       login,
       register,
+      completeAuth,
       logout,
     }),
     [token, user, loading]
