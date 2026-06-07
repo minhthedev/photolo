@@ -28,6 +28,7 @@ export const deleteAlbum = (id) => api.delete(`/albums/${id}`);
 export const syncDriveImages = (albumId) => api.post(`/albums/${albumId}/sync-drive`);
 export const getImages = (albumId, page = 1, limit = 24) =>
   api.get(`/images/${albumId}`, { params: { page, limit } });
+export const getSelectedImages = (albumId) => api.get(`/images/${albumId}/selected`);
 export const addImage = (albumId, url) =>
   api.post('/images', { album_id: albumId, url });
 export const toggleImageSelection = (id) => api.patch(`/images/${id}`);

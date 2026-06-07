@@ -65,6 +65,21 @@ exports.getImagesByAlbum = async (albumId, { page = 1, limit = 24 } = {}) => {
   };
 };
 
+exports.getSelectedImagesByAlbum = async (albumId) => {
+  const albumCheck = await pool.query('SELECT id FROM albums WHERE id = $1', [albumId]);
+  if (albumCheck.rows.length === 0) {
+    return null;
+  }
+
+  const result = await pool.query(
+    `SELECT * FROM images
+     WHERE album_id = $1 AND is_selected = true
+     ORDER BY created_at DESC`,
+    [albumId]
+  );
+  return result.rows.map(mapImage);
+};
+
 exports.getAllImagesByAlbum = async (albumId) => {
   const result = await pool.query(
     `SELECT * FROM images WHERE album_id = $1 ORDER BY created_at DESC`,

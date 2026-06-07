@@ -47,6 +47,20 @@ exports.getImagesByAlbum = async (req, res) => {
   }
 };
 
+exports.getSelectedImagesByAlbum = async (req, res) => {
+  try {
+    const images = await imageService.getSelectedImagesByAlbum(req.params.albumId);
+
+    if (images === null) {
+      return res.status(404).json({ message: 'Album not found' });
+    }
+
+    res.json({ images, selectedCount: images.length });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch selected images', error: error.message });
+  }
+};
+
 exports.toggleSelection = async (req, res) => {
   try {
     const image = await imageService.toggleSelection(req.params.id);

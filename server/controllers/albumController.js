@@ -53,9 +53,7 @@ exports.getAlbumById = async (req, res) => {
       return res.status(404).json({ message: 'Album not found' });
     }
 
-    const images = await imageService.getAllImagesByAlbum(req.params.id);
-
-    res.json({ ...album, images });
+    res.json(album);
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch album', error: error.message });
   }

@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import ImageGrid from '../components/ImageGrid';
 import NoteModal from '../components/NoteModal';
 import { useAuth } from '../context/AuthContext';
-import { getAlbum, getImages, toggleImageSelection, updateImageNote } from '../api';
+import { getAlbum, getImages, getSelectedImages, toggleImageSelection, updateImageNote } from '../api';
 
 function Album() {
   const { id } = useParams();
@@ -43,10 +43,9 @@ function Album() {
   );
 
   const loadSelectedFiles = useCallback(async () => {
-    const { data } = await getAlbum(id);
-    const selected = (data.images || []).filter((img) => img.isSelected);
-    setSelectedFiles(selected);
-    return selected;
+    const { data } = await getSelectedImages(id);
+    setSelectedFiles(data.images || []);
+    return data.images || [];
   }, [id]);
 
   useEffect(() => {

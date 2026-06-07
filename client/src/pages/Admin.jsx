@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ImageGrid from '../components/ImageGrid';
 import { useAuth } from '../context/AuthContext';
-import { addImage, createAlbum, deleteAlbum, getAlbum, getAlbums, syncDriveImages, updateAlbum } from '../api';
+import { addImage, createAlbum, deleteAlbum, getAlbums, getImages, syncDriveImages, updateAlbum } from '../api';
 
 function Admin() {
   const navigate = useNavigate();
@@ -37,7 +37,7 @@ function Admin() {
       setSelectedCount(0);
       return;
     }
-    const { data } = await getAlbum(albumId);
+    const { data } = await getImages(albumId, 1, 1000);
     setImages(data.images || []);
     setSelectedCount(data.selectedCount ?? 0);
   };
@@ -92,7 +92,7 @@ function Admin() {
     for (let i = 0; i < 90; i += 1) {
       await new Promise((resolve) => setTimeout(resolve, 2000));
       await refreshAlbums();
-      const { data } = await getAlbum(albumId);
+      const { data } = await getImages(albumId, 1, 1000);
       const count = data.images?.length || 0;
       setImages(data.images || []);
       setSelectedCount(data.selectedCount ?? 0);
