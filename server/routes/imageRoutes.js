@@ -4,9 +4,9 @@ const imageController = require('../controllers/imageController');
 const { requireAuth } = require('../middleware/authMiddleware');
 
 router.get('/proxy/:fileId', imageController.proxyDriveImage);
+router.get('/:albumId/selected', imageController.getSelectedImagesByAlbum);
 router.patch('/:id/note', imageController.updateClientNote);
 router.patch('/:id', imageController.toggleSelection);
-router.get('/:albumId/selected', imageController.getSelectedImagesByAlbum);
 router.get('/:albumId', imageController.getImagesByAlbum);
 
 router.post('/', requireAuth, imageController.addImage);

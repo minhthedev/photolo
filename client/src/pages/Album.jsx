@@ -44,8 +44,12 @@ function Album() {
 
   const loadSelectedFiles = useCallback(async () => {
     const { data } = await getSelectedImages(id);
-    setSelectedFiles(data.images || []);
-    return data.images || [];
+    if (!data || !Array.isArray(data.images)) {
+      throw new Error('Invalid selected images response');
+    }
+    setSelectedFiles(data.images);
+    setSelectedCount(data.selectedCount ?? data.images.length);
+    return data.images;
   }, [id]);
 
   useEffect(() => {
@@ -57,13 +61,14 @@ function Album() {
 
         try {
           const { data: selectedData } = await getSelectedImages(id);
-          const count = selectedData.selectedCount ?? selectedData.images?.length ?? 0;
-          setSelectedCount(count);
-          if (selectedData.images?.length) {
-            setSelectedFiles(selectedData.images);
+          if (Array.isArray(selectedData?.images)) {
+            setSelectedCount(selectedData.selectedCount ?? selectedData.images.length);
+            if (selectedData.images.length > 0) {
+              setSelectedFiles(selectedData.images);
+            }
           }
         } catch {
-          /* endpoint cũ có thể chưa có — bỏ qua */
+          /* giữ selectedCount từ getImages nếu /selected chưa sẵn sàng */
         }
       } catch {
         setError('Không tìm thấy album hoặc không thể tải dữ liệu.');

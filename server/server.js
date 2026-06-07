@@ -50,6 +50,10 @@ if (isProduction) {
   app.use(express.static(clientDist));
 
   app.get('*', (req, res) => {
+    if (req.path.startsWith('/api/')) {
+      res.status(404).json({ message: 'API route not found' });
+      return;
+    }
     res.sendFile(path.join(clientDist, 'index.html'));
   });
 }
