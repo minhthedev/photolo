@@ -1,17 +1,33 @@
 const { Pool } = require('pg');
 
+const getSslConfig = () => {
+  const url = process.env.DATABASE_URL || '';
+
+  if (
+    url.includes('neon.tech') ||
+    url.includes('sslmode=require') ||
+    url.includes('sslmode=verify-full')
+  ) {
+    return { rejectUnauthorized: false };
+  }
+
+  return false;
+};
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL?.includes('neon.tech')
-    ? { rejectUnauthorized: false }
-    : false,
+  ssl: getSslConfig(),
+  connectionTimeoutMillis: 15000,
+  max: 5,
 });
 
 pool.on('error', (err) => {
   console.error('Unexpected PostgreSQL pool error:', err.message);
 });
 
-const initDb = async () => {
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const runMigrations = async () => {
   await pool.query(`
     CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
@@ -58,6 +74,29 @@ const initDb = async () => {
 
   const userService = require('../services/userService');
   await userService.seedAdmin();
+};
+
+const initDb = async () => {
+  if (!process.env.DATABASE_URL?.trim()) {
+    throw new Error('DATABASE_URL chưa được cấu hình');
+  }
+
+  const maxAttempts = 4;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      await runMigrations();
+      return;
+    } catch (error) {
+      console.error(`Database connect attempt ${attempt}/${maxAttempts} failed:`, error.message);
+
+      if (attempt === maxAttempts) {
+        throw error;
+      }
+
+      await sleep(3000);
+    }
+  }
 };
 
 module.exports = { pool, initDb };

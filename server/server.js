@@ -67,7 +67,9 @@ const start = async () => {
     });
   } catch (error) {
     console.error('Failed to start server:', error.message || error);
-    console.error('\nHãy cấu hình DATABASE_URL trong server/.env (Neon PostgreSQL hoặc local Postgres).');
+    console.error(
+      '\nKiểm tra DATABASE_URL trên Render (dùng connection string Pooler từ Neon, có sslmode=require).'
+    );
     process.exit(1);
   }
 };
