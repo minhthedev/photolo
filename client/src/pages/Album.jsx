@@ -54,6 +54,17 @@ function Album() {
         const { data: albumData } = await getAlbum(id);
         setAlbum(albumData);
         await fetchImages(1);
+
+        try {
+          const { data: selectedData } = await getSelectedImages(id);
+          const count = selectedData.selectedCount ?? selectedData.images?.length ?? 0;
+          setSelectedCount(count);
+          if (selectedData.images?.length) {
+            setSelectedFiles(selectedData.images);
+          }
+        } catch {
+          /* endpoint cũ có thể chưa có — bỏ qua */
+        }
       } catch {
         setError('Không tìm thấy album hoặc không thể tải dữ liệu.');
       } finally {
@@ -115,7 +126,13 @@ function Album() {
     try {
       const selected = await loadSelectedFiles();
       setFavoriteImages(selected);
+      setSelectedCount(selected.length);
       setFavoritesOnly(true);
+      if (canManageAlbum && selected.length > 0) {
+        setShowSelectedList(true);
+      }
+    } catch {
+      alert('Không thể tải danh sách ảnh đã tim. Thử refresh trang.');
     } finally {
       setLoadingFavorites(false);
     }
@@ -265,7 +282,9 @@ function Album() {
                 ? 'Đang tải...'
                 : favoritesOnly
                   ? 'Xem tất cả ảnh'
-                  : `Ảnh đã tim (${selectedCount})`}
+                  : canManageAlbum
+                    ? `Ảnh khách đã tim (${selectedCount})`
+                    : `Ảnh đã tim (${selectedCount})`}
             </button>
 
             <div
@@ -292,7 +311,12 @@ function Album() {
                 {selectedCount > 0 && (
                   <button
                     type="button"
-                    onClick={() => setShowSelectedList((v) => !v)}
+                    onClick={async () => {
+                      if (!showSelectedList) {
+                        await loadSelectedFiles();
+                      }
+                      setShowSelectedList((v) => !v);
+                    }}
                     className={`btn-secondary !px-3 !py-2 text-xs sm:text-sm ${
                       showSelectedList ? '!border-accent/50 !text-accent' : ''
                     }`}
@@ -353,7 +377,9 @@ function Album() {
         <div className="border-b border-accent/20 bg-gradient-to-r from-accent/10 via-transparent to-accent/5">
           <div className="mx-auto max-w-[1600px] px-4 py-3 sm:px-6">
             <p className="text-center text-sm text-accent/90">
-              ✨ Đang xem {favoriteImages.length} ảnh bạn đã tim — bấm tim lần nữa để bỏ chọn
+              ✨ Đang xem {favoriteImages.length}{' '}
+              {canManageAlbum ? 'ảnh khách đã tim' : 'ảnh bạn đã tim'} — bấm tim lần nữa để bỏ
+              chọn
             </p>
           </div>
         </div>
