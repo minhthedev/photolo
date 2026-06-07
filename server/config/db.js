@@ -48,6 +48,7 @@ const runMigrations = async () => {
     );
 
     CREATE INDEX IF NOT EXISTS idx_images_album_id ON images(album_id);
+    CREATE INDEX IF NOT EXISTS idx_images_album_created ON images(album_id, created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_images_album_selected ON images(album_id, is_selected);
 
     ALTER TABLE images ADD COLUMN IF NOT EXISTS file_name TEXT;

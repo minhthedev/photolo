@@ -93,21 +93,51 @@ exports.updateClientNote = async (req, res) => {
 };
 
 exports.proxyDriveImage = async (req, res) => {
-  try {
-    const { fileId } = req.params;
-    const driveUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
+  const { fileId } = req.params;
 
-    const response = await fetch(driveUrl, { redirect: 'follow' });
+  try {
+    const apiKey = process.env.GOOGLE_API_KEY?.trim();
+
+    if (!apiKey) {
+      return res.status(503).json({ message: 'GOOGLE_API_KEY chưa cấu hình trên server' });
+    }
+
+    const mediaUrl = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&key=${encodeURIComponent(apiKey)}&supportsAllDrives=true`;
+    let response = await fetch(mediaUrl);
 
     if (!response.ok) {
-      return res.status(response.status).json({ message: 'Không thể tải ảnh từ Drive' });
+      const thumbUrl = `https://drive.google.com/thumbnail?id=${encodeURIComponent(fileId)}&sz=w1200`;
+      response = await fetch(thumbUrl);
+    }
+
+    if (!response.ok) {
+      return res.status(502).json({
+        message: 'Không thể tải ảnh từ Drive. Folder cần share "Anyone with the link".',
+      });
     }
 
     const contentType = response.headers.get('content-type') || 'image/jpeg';
+
+    if (contentType.includes('text/html')) {
+      return res.status(502).json({
+        message: 'Drive từ chối truy cập ảnh. Kiểm tra quyền share folder.',
+      });
+    }
+
     res.set('Content-Type', contentType);
-    res.set('Cache-Control', 'public, max-age=604800');
+    res.set('Cache-Control', 'public, max-age=604800, immutable');
+
+    if (response.body) {
+      const { Readable } = require('stream');
+      Readable.fromWeb(response.body).pipe(res);
+      return;
+    }
+
     res.send(Buffer.from(await response.arrayBuffer()));
   } catch (error) {
-    res.status(500).json({ message: 'Failed to proxy image', error: error.message });
+    console.error('Proxy Drive image failed:', fileId, error.message);
+    if (!res.headersSent) {
+      res.status(500).json({ message: 'Failed to proxy image', error: error.message });
+    }
   }
 };

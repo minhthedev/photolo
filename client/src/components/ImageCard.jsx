@@ -3,7 +3,7 @@ import { useState } from 'react';
 function getFallbackUrl(url) {
   const match = url.match(/\/proxy\/([a-zA-Z0-9_-]+)/);
   if (match) {
-    return `https://drive.google.com/uc?export=view&id=${match[1]}`;
+    return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1200`;
   }
   return url;
 }
