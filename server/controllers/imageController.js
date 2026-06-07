@@ -1,6 +1,44 @@
 const imageService = require('../services/imageService');
 const albumService = require('../services/albumService');
 
+const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
+
+const fetchWithTimeout = async (url, ms = 25000) => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+
+  try {
+    return await fetch(url, { redirect: 'follow', signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
+const sendBufferedImage = async (res, response) => {
+  const contentType = response.headers.get('content-type') || 'image/jpeg';
+
+  if (contentType.includes('text/html')) {
+    return false;
+  }
+
+  const buffer = Buffer.from(await response.arrayBuffer());
+
+  if (!buffer.length) {
+    return false;
+  }
+
+  if (buffer.length > MAX_IMAGE_BYTES) {
+    res.status(413).json({ message: 'Ảnh quá lớn để proxy' });
+    return true;
+  }
+
+  res.set('Content-Type', contentType);
+  res.set('Content-Length', buffer.length);
+  res.set('Cache-Control', 'public, max-age=604800, immutable');
+  res.send(buffer);
+  return true;
+};
+
 exports.addImage = async (req, res) => {
   try {
     const { album_id, albumId, url } = req.body;
@@ -98,42 +136,33 @@ exports.proxyDriveImage = async (req, res) => {
   try {
     const apiKey = process.env.GOOGLE_API_KEY?.trim();
 
-    if (!apiKey) {
-      return res.status(503).json({ message: 'GOOGLE_API_KEY chưa cấu hình trên server' });
+    const sources = [
+      `https://drive.google.com/thumbnail?id=${encodeURIComponent(fileId)}&sz=w1200`,
+    ];
+
+    if (apiKey) {
+      sources.push(
+        `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&key=${encodeURIComponent(apiKey)}&supportsAllDrives=true`
+      );
     }
 
-    const mediaUrl = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&key=${encodeURIComponent(apiKey)}&supportsAllDrives=true`;
-    let response = await fetch(mediaUrl);
+    for (const url of sources) {
+      try {
+        const response = await fetchWithTimeout(url);
+        if (!response.ok) continue;
 
-    if (!response.ok) {
-      const thumbUrl = `https://drive.google.com/thumbnail?id=${encodeURIComponent(fileId)}&sz=w1200`;
-      response = await fetch(thumbUrl);
+        const sent = await sendBufferedImage(res, response);
+        if (sent) return;
+      } catch (err) {
+        console.warn('Proxy source failed:', fileId, err.message);
+      }
     }
 
-    if (!response.ok) {
-      return res.status(502).json({
+    if (!res.headersSent) {
+      res.status(502).json({
         message: 'Không thể tải ảnh từ Drive. Folder cần share "Anyone with the link".',
       });
     }
-
-    const contentType = response.headers.get('content-type') || 'image/jpeg';
-
-    if (contentType.includes('text/html')) {
-      return res.status(502).json({
-        message: 'Drive từ chối truy cập ảnh. Kiểm tra quyền share folder.',
-      });
-    }
-
-    res.set('Content-Type', contentType);
-    res.set('Cache-Control', 'public, max-age=604800, immutable');
-
-    if (response.body) {
-      const { Readable } = require('stream');
-      Readable.fromWeb(response.body).pipe(res);
-      return;
-    }
-
-    res.send(Buffer.from(await response.arrayBuffer()));
   } catch (error) {
     console.error('Proxy Drive image failed:', fileId, error.message);
     if (!res.headersSent) {

@@ -1,11 +1,22 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
-function getFallbackUrl(url) {
-  const match = url.match(/\/proxy\/([a-zA-Z0-9_-]+)/);
-  if (match) {
-    return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1200`;
-  }
-  return url;
+const PROXY_PATTERN = /\/proxy\/([a-zA-Z0-9_-]+)/;
+
+function getDriveFileId(url) {
+  const match = url?.match(PROXY_PATTERN);
+  return match ? match[1] : null;
+}
+
+function getThumbnailUrl(url) {
+  const fileId = getDriveFileId(url);
+  if (!fileId) return url;
+  return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1200`;
+}
+
+function getProxyUrl(url) {
+  const fileId = getDriveFileId(url);
+  if (!fileId) return url;
+  return `/api/images/proxy/${fileId}`;
 }
 
 function ImageCard({
@@ -17,9 +28,15 @@ function ImageCard({
 }) {
   const [isHovered, setIsHovered] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [src, setSrc] = useState(image.url);
+  const [src, setSrc] = useState(() => getThumbnailUrl(image.url));
   const [hasError, setHasError] = useState(false);
   const selected = image.isSelected;
+
+  useEffect(() => {
+    setSrc(getThumbnailUrl(image.url));
+    setHasError(false);
+    setIsLoading(true);
+  }, [image.url]);
 
   const handleToggle = (e) => {
     e.stopPropagation();
@@ -27,9 +44,10 @@ function ImageCard({
   };
 
   const handleError = () => {
-    const fallback = getFallbackUrl(image.url);
-    if (src !== fallback) {
-      setSrc(fallback);
+    const proxyUrl = getProxyUrl(image.url);
+    if (src !== proxyUrl && getDriveFileId(image.url)) {
+      setSrc(proxyUrl);
+      setIsLoading(true);
       return;
     }
     setHasError(true);
